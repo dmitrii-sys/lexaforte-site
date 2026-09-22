@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LexaForte — Client Feedback Portal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: { DEFAULT: "#313a46", 900: "#2a313b", 950: "#1a1f26" },
+        accent: { DEFAULT: "#38bdf8", 500: "#0ea5e9" }
+      },
+      fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] }
+    }
+  }
+}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+.bg-grid { background-image: linear-gradient(to right, rgba(56,189,248,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(56,189,248,0.03) 1px, transparent 1px); background-size: 48px 48px; }
+.badge-completed { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+.badge-progress { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+.badge-open { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+.paste-zone.active { border-color: rgba(56,189,248,0.6); background: rgba(56,189,248,0.08); }
+.paste-zone.has-image { border-style: solid; border-color: rgba(56,189,248,0.35); }
+</style>
+</head>
+<body class="bg-brand-950 text-slate-200 font-sans antialiased min-h-screen">
+
+<!-- ========== LOGIN ========== -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center relative">
+  <div class="absolute inset-0 bg-grid opacity-50"></div>
+  <div class="relative w-full max-w-md mx-4">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center">
+          <svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+        </div>
+        <span class="text-2xl font-bold text-white">Lexa<span class="text-accent">Forte</span></span>
+      </div>
+      <p class="text-slate-400 text-sm">Client Feedback Portal</p>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-brand-900/70 p-8">
+      <h1 class="text-xl font-semibold text-white mb-1">Sign in with API Key</h1>
+      <p class="text-sm text-slate-400 mb-6">Use the key you received after onboarding.</p>
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-2 uppercase">API Key</label>
+          <input type="password" id="api-key" placeholder="lf_••••••••••••" class="w-full rounded-xl border border-white/10 bg-brand-950/80 px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:border-accent/50 font-mono text-sm"/>
+        </div>
+        <button type="submit" class="w-full rounded-xl bg-accent hover:bg-accent-500 text-brand-950 font-bold text-sm px-5 py-3.5 transition-all">Access Portal</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========== APP ========== -->
+<div id="app" class="hidden min-h-screen flex flex-col">
+  <header class="sticky top-0 z-40 border-b border-white/5 bg-brand-950/80 backdrop-blur-xl">
+    <div class="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-accent/15 border border-accent/30 flex items-center justify-center">
+          <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+        </div>
+        <span class="text-base font-semibold text-white">Lexa<span class="text-accent">Forte</span> <span class="text-slate-500 text-sm">Feedback</span></span>
+        <span id="admin-badge" class="hidden ml-2 inline-flex items-center rounded-full bg-accent/15 border border-accent/30 px-2.5 py-0.5 text-[11px] font-semibold text-accent tracking-wide">OWNER</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="key-badge" class="hidden sm:inline text-xs text-slate-400 font-mono border border-white/10 rounded-full px-3 py-1"></span>
+        <button id="logout-btn" class="text-sm text-slate-400 hover:text-white px-3 py-1.5">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 relative">
+    <div class="absolute inset-0 bg-grid opacity-40 pointer-events-none"></div>
+    <div class="relative max-w-6xl mx-auto px-4 py-10">
+
+      <!-- Owner-only: switch to a client key -->
+      <div id="admin-bar" class="hidden mb-8 rounded-2xl border border-accent/20 bg-accent/5 p-5">
+        <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+          <div class="flex-1">
+            <p class="text-xs font-semibold text-accent uppercase tracking-wider mb-1">Owner mode</p>
+            <p class="text-sm text-slate-400 mb-3">Enter a client API key to view and manage their issues. Status changes are allowed only for you.</p>
+            <div class="flex gap-3">
+              <input type="text" id="client-key-input" placeholder="Client API key…" class="flex-1 rounded-xl border border-white/10 bg-brand-950/80 px-4 py-2.5 text-white placeholder-slate-600 font-mono text-sm focus:outline-none focus:border-accent/50"/>
+              <button id="load-client-btn" class="rounded-xl bg-accent hover:bg-accent-500 text-brand-950 font-bold text-sm px-5 py-2.5 whitespace-nowrap">Load client</button>
+            </div>
+          </div>
+          <div id="viewing-client" class="hidden text-sm text-slate-400">
+            Viewing: <span id="viewing-client-key" class="font-mono text-accent"></span>
+            <button id="clear-client-btn" class="ml-3 text-slate-500 hover:text-white underline text-xs">Back to empty</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
+        <div>
+          <p class="text-accent font-semibold text-xs tracking-widest uppercase mb-2">Client Portal</p>
+          <h1 class="text-3xl font-bold text-white">LexaForte Updates</h1>
+          <p class="mt-2 text-slate-400 text-sm">Describe the issue, paste a screenshot with Ctrl+V, track status.</p>
+        </div>
+        <button id="new-issue-btn" class="inline-flex items-center gap-2 rounded-xl bg-accent hover:bg-accent-500 text-brand-950 font-bold text-sm px-5 py-3">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          New Issue
+        </button>
+      </div>
+
+      <div id="issues-container" class="space-y-4"></div>
+
+      <div id="empty-state" class="hidden text-center py-16">
+        <h3 class="text-lg font-semibold text-white mb-2">No issues yet</h3>
+        <p class="text-slate-400 text-sm mb-6">Report the first one when needed.</p>
+        <button id="empty-new-btn" class="rounded-xl border border-white/10 bg-white/5 text-white text-sm px-5 py-2.5">Create first issue</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div id="modal-overlay" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/70">
+  <div class="w-full max-w-xl rounded-2xl border border-white/10 bg-brand-900 overflow-hidden">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-white/5">
+      <h2 class="text-lg font-semibold text-white">New Issue</h2>
+      <button id="modal-close" class="p-1.5 text-slate-400 hover:text-white">✕</button>
+    </div>
+    <div class="p-6 space-y-5">
+      <div>
+        <label class="block text-xs font-medium text-slate-400 mb-2 uppercase">Issue description (optional)</label>
+        <textarea id="issue-text" rows="3" placeholder="Optional. Describe what you want to change…" class="w-full rounded-xl border border-white/10 bg-brand-950/80 px-4 py-3 text-white placeholder-slate-600 text-sm resize-none focus:outline-none focus:border-accent/50"></textarea>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-400 mb-2 uppercase">Screenshot</label>
+        <div id="paste-zone" tabindex="0" class="paste-zone relative rounded-xl border-2 border-dashed border-white/15 bg-brand-950/50 min-h-[160px] flex flex-col items-center justify-center cursor-pointer">
+          <div id="paste-empty" class="text-center px-6 py-6">
+            <p class="text-sm font-medium text-white mb-1">Paste screenshot here</p>
+            <p class="text-xs text-slate-500">Ctrl + V or click to choose file</p>
+          </div>
+          <div id="paste-preview" class="hidden absolute inset-0 p-3">
+            <img id="preview-img" class="w-full h-full object-contain rounded-lg" alt="Preview"/>
+            <button id="clear-image" type="button" class="absolute top-4 right-4 p-1.5 rounded bg-black/60 text-white text-xs">✕</button>
+          </div>
+          <input type="file" id="file-input" accept="image/*" class="hidden"/>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 px-6 py-4 border-t border-white/5">
+      <button id="modal-cancel" class="px-4 py-2.5 text-sm text-slate-400 hover:text-white">Cancel</button>
+      <button id="modal-submit" class="rounded-xl bg-accent text-brand-950 font-bold text-sm px-5 py-2.5">Submit Issue</button>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 bg-black/85 cursor-zoom-out">
+  <img id="lightbox-img" class="max-w-full max-h-[90vh] rounded-lg object-contain" alt="Full"/>
+</div>
+
+<script>
+const ADMIN_KEY = "lc_admin_7c592cc9d8777121027ce2da9412c563";
+
+let sessionKey = null;       // the key used to log in
+let activeKey = null;        // the key whose issues we are currently viewing
+let isAdmin = false;
+let issues = [];
+let pendingImage = null;
+
+const $ = s => document.querySelector(s);
+
+// Safe storage (works even when localStorage/sessionStorage are blocked by sandbox)
+const _mem = {};
+function canUseStorage(type) {
+  try {
+    const s = type === "local" ? localStorage : sessionStorage;
+    const t = "__lf_test__";
+    s.setItem(t, "1");
+    s.removeItem(t);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+const hasLocal = canUseStorage("local");
+const hasSession = canUseStorage("session");
+
+function storageKey(k){ return "lexaforte_feedback_" + k; }
+function loadIssues(k){
+  try {
+    if (hasLocal) {
+      return JSON.parse(localStorage.getItem(storageKey(k)) || "[]");
+    }
+    return _mem[storageKey(k)] || [];
+  } catch { return []; }
+}
+function saveIssues(k, l){
+  try {
+    if (hasLocal) {
+      localStorage.setItem(storageKey(k), JSON.stringify(l));
+    } else {
+      _mem[storageKey(k)] = l;
+    }
+  } catch (e) {
+    _mem[storageKey(k)] = l;
+  }
+}
+function saveSession(key) {
+  try {
+    if (hasSession) sessionStorage.setItem("lexaforte_session_key", key);
+  } catch (e) {}
+}
+function loadSession() {
+  try {
+    if (hasSession) return sessionStorage.getItem("lexaforte_session_key");
+  } catch (e) {}
+  return null;
+}
+function clearSession() {
+  try {
+    if (hasSession) sessionStorage.removeItem("lexaforte_session_key");
+  } catch (e) {}
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function formatDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, {day:"numeric", month:"short", year:"numeric"}) + " · " + d.toLocaleTimeString(undefined, {hour:"2-digit", minute:"2-digit"});
+}
+
+function statusBadge(s){
+  const m = {
+    completed: {c:"badge-completed", l:"Completed"},
+    progress:  {c:"badge-progress",  l:"In Progress"},
+    open:      {c:"badge-open",      l:"Open"}
+  };
+  const x = m[s] || m.open;
+  return `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${x.c}">${x.l}</span>`;
+}
+
+function ensureDemo(k){
+  if (k !== "demo-key-123") return;
+  if (loadIssues(k).length) return;
+  const samples = [
+    {id: uid(), text: "Optional. Describe what you want to change.", image: null, status: "completed", createdAt: new Date(Date.now() - 864e5 * 3).toISOString()},
+    {id: uid(), text: "Pharmaceutical development — title and subtitle alignment in bilingual report headers.", image: null, status: "completed", createdAt: new Date(Date.now() - 864e5 * 2).toISOString()},
+    {id: uid(), text: "Model may have misinterpreted the turn with 'with' (should have been 'pressing of the preparation XXX 5 mg...'). Can MTQE catch this on later pages?", image: null, status: "completed", createdAt: new Date(Date.now() - 864e5).toISOString()},
+    {id: uid(), text: "Extra non-breaking spaces between letter and digit (W_u W_L style).", image: null, status: "completed", createdAt: new Date(Date.now() - 36e5 * 5).toISOString()}
+  ];
+  saveIssues(k, samples);
+}
+
+function escapeHtml(t){
+  const d = document.createElement("div");
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+function renderIssues(){
+  const c = $("#issues-container"), e = $("#empty-state");
+  if (!issues.length){
+    c.innerHTML = "";
+    e.classList.remove("hidden");
+    return;
+  }
+  e.classList.add("hidden");
+
+  const sorted = [...issues].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  c.innerHTML = sorted.map(issue => {
+    // Status control: only admin can change it
+    let statusControl = "";
+    if (isAdmin) {
+      statusControl = `
+        <select data-action="change-status" data-id="${issue.id}" class="rounded-lg border border-white/10 bg-brand-950 text-sm text-slate-200 px-3 py-1.5">
+          <option value="open" ${issue.status === "open" ? "selected" : ""}>Open</option>
+          <option value="progress" ${issue.status === "progress" ? "selected" : ""}>In Progress</option>
+          <option value="completed" ${issue.status === "completed" ? "selected" : ""}>Completed</option>
+        </select>
+        <button data-action="delete" data-id="${issue.id}" class="p-1.5 text-slate-600 hover:text-red-400" title="Delete">🗑</button>
+      `;
+    } else {
+      // Clients only see the badge (read-only)
+      statusControl = statusBadge(issue.status);
+    }
+
+    return `
+    <div class="rounded-2xl border border-white/5 bg-brand-900/60 p-5 md:p-6 hover:border-white/10" data-id="${issue.id}">
+      <div class="flex flex-col lg:flex-row gap-5">
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            ${isAdmin ? statusBadge(issue.status) : ""}
+            <span class="text-xs text-slate-500">${formatDate(issue.createdAt)}</span>
+          </div>
+          <p class="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap break-words ${issue.text ? "" : "text-slate-500 italic"}">
+            ${issue.text ? escapeHtml(issue.text) : "No description provided"}
+          </p>
+        </div>
+        <div class="shrink-0 w-full lg:w-48">
+          ${issue.image
+            ? `<button class="block w-full aspect-video rounded-xl overflow-hidden border border-white/10 bg-brand-950 hover:border-accent/40" data-action="view-image" data-src="${issue.image}">
+                 <img src="${issue.image}" class="w-full h-full object-cover" alt="Screenshot"/>
+               </button>`
+            : `<div class="w-full aspect-video rounded-xl border border-dashed border-white/10 bg-brand-950/50 flex items-center justify-center">
+                 <span class="text-xs text-slate-600">No screenshot</span>
+               </div>`}
+        </div>
+        <div class="shrink-0 flex lg:flex-col items-center lg:items-end gap-2">
+          ${statusControl}
+        </div>
+      </div>
+    </div>
+  `}).join("");
+}
+
+async function login(key){
+  if (!key || key.trim().length < 3){
+    alert("Enter a valid API key (min 3 characters)");
+    return;
+  }
+  key = key.trim();
+  const btn = document.querySelector("#login-form button[type=submit]");
+  const original = btn ? btn.textContent : "Access Portal";
+  if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
+
+  try {
+    const res = await fetch("https://api.lexaforte.com/auth/validate", {
+      method: "GET",
+      headers: { "X-API-Key": key }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Invalid API Key");
+    }
+    const data = await res.json();
+
+    sessionKey = key;
+    isAdmin = (sessionKey === ADMIN_KEY) || (data.client_type === "Admin");
+    activeKey = isAdmin ? null : sessionKey;
+
+    if (!isAdmin) {
+      ensureDemo(activeKey);
+      issues = loadIssues(activeKey);
+    } else {
+      issues = [];
+    }
+
+    $("#login-screen").classList.add("hidden");
+    $("#app").classList.remove("hidden");
+
+    if (isAdmin) {
+      $("#admin-badge").classList.remove("hidden");
+      $("#admin-bar").classList.remove("hidden");
+      $("#key-badge").textContent = "OWNER";
+      $("#key-badge").classList.remove("hidden");
+      $("#viewing-client").classList.add("hidden");
+    } else {
+      $("#admin-badge").classList.add("hidden");
+      $("#admin-bar").classList.add("hidden");
+      const label = data.client_name ? data.client_name + " · " : "";
+      $("#key-badge").textContent = label + (sessionKey.length > 16
+        ? sessionKey.slice(0, 8) + "…" + sessionKey.slice(-4)
+        : sessionKey);
+      $("#key-badge").classList.remove("hidden");
+    }
+
+    renderIssues();
+    saveSession(sessionKey);
+  } catch (e) {
+    alert(e.message || "Invalid API Key");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = original; }
+  }
+}
+
+function logout(){
+  sessionKey = null;
+  activeKey = null;
+  isAdmin = false;
+  issues = [];
+  clearSession();
+  $("#app").classList.add("hidden");
+  $("#login-screen").classList.remove("hidden");
+  $("#api-key").value = "";
+  $("#client-key-input").value = "";
+}
+
+function loadClient(){
+  const k = $("#client-key-input").value.trim();
+  if (!k || k.length < 3){
+    alert("Enter a valid client API key");
+    return;
+  }
+  activeKey = k;
+  ensureDemo(activeKey);
+  issues = loadIssues(activeKey);
+  $("#viewing-client-key").textContent = activeKey.length > 20 ? activeKey.slice(0,10) + "…" + activeKey.slice(-6) : activeKey;
+  $("#viewing-client").classList.remove("hidden");
+  renderIssues();
+}
+
+function clearClient(){
+  activeKey = null;
+  issues = [];
+  $("#client-key-input").value = "";
+  $("#viewing-client").classList.add("hidden");
+  renderIssues();
+}
+
+function openModal(){
+  if (isAdmin && !activeKey){
+    alert("First load a client key in the Owner bar above.");
+    return;
+  }
+  pendingImage = null;
+  $("#issue-text").value = "";
+  $("#paste-empty").classList.remove("hidden");
+  $("#paste-preview").classList.add("hidden");
+  $("#preview-img").src = "";
+  $("#paste-zone").classList.remove("has-image", "active");
+  $("#modal-overlay").classList.remove("hidden");
+  $("#modal-overlay").classList.add("flex");
+  setTimeout(() => $("#paste-zone").focus(), 100);
+}
+
+function closeModal(){
+  $("#modal-overlay").classList.add("hidden");
+  $("#modal-overlay").classList.remove("flex");
+  pendingImage = null;
+}
+
+function setImageFromFile(file){
+  if (!file || !file.type.startsWith("image/")) return;
+  if (file.size > 8 * 1024 * 1024){
+    alert("Image too large (max 8 MB)");
+    return;
+  }
+  const r = new FileReader();
+  r.onload = e => {
+    pendingImage = e.target.result;
+    $("#preview-img").src = pendingImage;
+    $("#paste-empty").classList.add("hidden");
+    $("#paste-preview").classList.remove("hidden");
+    $("#paste-zone").classList.add("has-image");
+  };
+  r.readAsDataURL(file);
+}
+
+function clearImage(){
+  pendingImage = null;
+  $("#preview-img").src = "";
+  $("#paste-empty").classList.remove("hidden");
+  $("#paste-preview").classList.add("hidden");
+  $("#paste-zone").classList.remove("has-image");
+  $("#file-input").value = "";
+}
+
+function submitIssue(){
+  if (!activeKey){
+    alert("No client key active.");
+    return;
+  }
+  const text = $("#issue-text").value.trim();
+  if (!text && !pendingImage){
+    alert("Add a description or a screenshot");
+    return;
+  }
+  // Clients (and admin creating on behalf of client) always start as Open
+  const newIssue = {
+    id: uid(),
+    text: text || "",
+    image: pendingImage,
+    status: "open",
+    createdAt: new Date().toISOString()
+  };
+  issues.unshift(newIssue);
+  saveIssues(activeKey, issues);
+  renderIssues();
+  closeModal();
+}
+
+function openLightbox(src){
+  $("#lightbox-img").src = src;
+  $("#lightbox").classList.remove("hidden");
+  $("#lightbox").classList.add("flex");
+}
+function closeLightbox(){
+  $("#lightbox").classList.add("hidden");
+  $("#lightbox").classList.remove("flex");
+  $("#lightbox-img").src = "";
+}
+
+// ========== EVENTS ==========
+$("#login-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  await login($("#api-key").value);
+});
+$("#logout-btn").addEventListener("click", logout);
+
+$("#load-client-btn").addEventListener("click", loadClient);
+$("#clear-client-btn").addEventListener("click", clearClient);
+$("#client-key-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") loadClient();
+});
+
+$("#new-issue-btn").addEventListener("click", openModal);
+$("#empty-new-btn").addEventListener("click", openModal);
+$("#modal-close").addEventListener("click", closeModal);
+$("#modal-cancel").addEventListener("click", closeModal);
+$("#modal-submit").addEventListener("click", submitIssue);
+
+$("#modal-overlay").addEventListener("click", e => {
+  if (e.target === $("#modal-overlay")) closeModal();
+});
+
+const zone = $("#paste-zone");
+zone.addEventListener("click", () => { if (!pendingImage) $("#file-input").click(); });
+zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("active"); });
+zone.addEventListener("dragleave", () => zone.classList.remove("active"));
+zone.addEventListener("drop", e => {
+  e.preventDefault();
+  zone.classList.remove("active");
+  const f = e.dataTransfer.files[0];
+  if (f) setImageFromFile(f);
+});
+
+document.addEventListener("paste", e => {
+  if ($("#modal-overlay").classList.contains("hidden")) return;
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items){
+    if (item.type.startsWith("image/")){
+      e.preventDefault();
+      const f = item.getAsFile();
+      if (f) setImageFromFile(f);
+      break;
+    }
+  }
+});
+
+$("#file-input").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (f) setImageFromFile(f);
+});
+$("#clear-image").addEventListener("click", e => { e.stopPropagation(); clearImage(); });
+
+$("#issues-container").addEventListener("click", e => {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const action = btn.dataset.action;
+  const id = btn.dataset.id;
+
+  if (action === "view-image") openLightbox(btn.dataset.src);
+
+  if (action === "delete"){
+    if (!isAdmin) return;               // safety
+    if (!confirm("Delete this issue?")) return;
+    issues = issues.filter(i => i.id !== id);
+    saveIssues(activeKey, issues);
+    renderIssues();
+  }
+});
+
+$("#issues-container").addEventListener("change", e => {
+  const sel = e.target.closest("[data-action=\"change-status\"]");
+  if (!sel || !isAdmin) return;         // only admin can change status
+  const issue = issues.find(i => i.id === sel.dataset.id);
+  if (issue){
+    issue.status = sel.value;
+    saveIssues(activeKey, issues);
+    renderIssues();
+  }
+});
+
+$("#lightbox").addEventListener("click", closeLightbox);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape"){
+    if (!$("#lightbox").classList.contains("hidden")) closeLightbox();
+    else if (!$("#modal-overlay").classList.contains("hidden")) closeModal();
+  }
+});
+
+// Restore session
+const saved = loadSession();
+if (saved) login(saved);
+</script>
+</body>
+</html>
